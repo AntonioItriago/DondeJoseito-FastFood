@@ -7,65 +7,91 @@
     body {
       font-family: Arial, sans-serif;
       color: #fff;
-      text-align: center;
       background: url('joseito Fast Food_page-0001.jpg') no-repeat center center fixed;
       background-size: cover;
+      margin: 0;
+      padding: 0;
     }
-    .menu {
+    h1 {
+      text-align: center;
+      background: rgba(0,0,0,0.7);
+      padding: 15px;
+    }
+    .category {
+      margin: 20px;
       background: rgba(0,0,0,0.6);
-      margin: 20px auto;
-      padding: 20px;
       border-radius: 10px;
-      max-width: 800px;
+      padding: 15px;
+    }
+    .carousel {
+      display: flex;
+      overflow-x: auto;
+      scroll-behavior: smooth;
     }
     .item {
-      border-bottom: 1px solid #ccc;
+      flex: 0 0 auto;
+      width: 220px;
+      margin: 10px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
       padding: 10px;
+      text-align: center;
     }
     .item h3 {
       margin: 0;
-      font-size: 1.2em;
+      font-size: 1.1em;
     }
     .item p {
-      margin: 5px 0;
+      font-size: 0.9em;
     }
-    .whatsapp-btn {
-      display: inline-block;
-      margin-top: 10px;
-      padding: 8px 12px;
+    .select-btn {
+      margin-top: 8px;
+      padding: 6px 10px;
+      background: #ff9800;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #pedido {
+      display: block;
+      margin: 20px auto;
+      padding: 12px 20px;
       background: #25D366;
       color: #fff;
-      border-radius: 5px;
+      border-radius: 8px;
       text-decoration: none;
       font-weight: bold;
+      text-align: center;
+      width: 200px;
     }
   </style>
 </head>
 <body>
   <h1>🍔 DondeJoseito FastFood</h1>
-  <div id="menu" class="menu">Cargando menú...</div>
+  <div id="menu"></div>
+  <a id="pedido" href="#" target="_blank">📲 Pedir</a>
 
   <script>
     const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTbg8KB2-y4tvbCW0e7Gf5CgXINL0nYscJRYD8BSavoNc40YZp0XWMF2-L686N0VoPqNIBTECKQqPd5/pub?gid=0&single=true&output=tsv";
     const dolarApi = "https://ve.dolarapi.com/v1/dolares/oficial";
+    const numeroWhatsApp = "584141234567"; // Cambia por tu número
+
+    let seleccionados = [];
 
     async function loadMenu() {
       try {
-        // Obtener tasa oficial
         const dolarRes = await fetch(dolarApi);
         const dolarData = await dolarRes.json();
-        const tasa = dolarData.promedio; // campo "promedio"
+        const tasa = dolarData.promedio;
 
-        // Obtener hoja TSV
         const res = await fetch(sheetUrl);
         const text = await res.text();
         const rows = text.trim().split("\n").map(r => r.split("\t"));
         const headers = rows[0];
         const data = rows.slice(1);
 
-        const menuDiv = document.getElementById("menu");
-        menuDiv.innerHTML = "";
-
+        const categorias = {};
         data.forEach(row => {
           const item = {};
           headers.forEach((h,i) => item[h] = row[i]);
@@ -79,21 +105,65 @@
             precioUsd = (precioBs / tasa).toFixed(2);
           }
 
-          const div = document.createElement("div");
-          div.className = "item";
-          div.innerHTML = `
-            <h3>${item.name}</h3>
-            <p>${item.description}</p>
-            <p><strong>${precioUsd} USD</strong> / <strong>${precioBs} Bs</strong></p>
-            <p>Categoría: ${item.category}</p>
-            <a class="whatsapp-btn" href="https://wa.me/584141234567?text=Quiero%20comprar%20${encodeURIComponent(item.name)}%20(${precioUsd}%20USD)" target="_blank">Comprar por WhatsApp</a>
-          `;
-          menuDiv.appendChild(div);
+          item.precioUsd = precioUsd;
+          item.precioBs = precioBs;
+
+          if(!categorias[item.category]) categorias[item.category] = [];
+          categorias[item.category].push(item);
+        });
+
+        const menuDiv = document.getElementById("menu");
+        menuDiv.innerHTML = "";
+
+        Object.keys(categorias).forEach(cat => {
+          const catDiv = document.createElement("div");
+          catDiv.className = "category";
+          catDiv.innerHTML = `<h2>${cat}</h2><div class="carousel"></div>`;
+          const carousel = catDiv.querySelector(".carousel");
+
+          categorias[cat].forEach(item => {
+            const div = document.createElement("div");
+            div.className = "item";
+            div.innerHTML = `
+              <h3>${item.name}</h3>
+              <p>${item.description}</p>
+              <p><strong>${item.precioUsd} USD</strong> / <strong>${item.precioBs} Bs</strong></p>
+              <button class="select-btn">Seleccionar</button>
+            `;
+            div.querySelector(".select-btn").addEventListener("click", () => {
+              if(!seleccionados.includes(item)) {
+                seleccionados.push(item);
+                div.querySelector(".select-btn").textContent = "✅ Seleccionado";
+                div.querySelector(".select-btn").style.background = "#4CAF50";
+              } else {
+                seleccionados = seleccionados.filter(i => i !== item);
+                div.querySelector(".select-btn").textContent = "Seleccionar";
+                div.querySelector(".select-btn").style.background = "#ff9800";
+              }
+              actualizarPedido();
+            });
+            carousel.appendChild(div);
+          });
+
+          menuDiv.appendChild(catDiv);
         });
       } catch (err) {
         document.getElementById("menu").innerHTML = "Error cargando menú 😢";
         console.error(err);
       }
+    }
+
+    function actualizarPedido() {
+      const pedidoBtn = document.getElementById("pedido");
+      if(seleccionados.length === 0) {
+        pedidoBtn.href = "#";
+        pedidoBtn.textContent = "📲 Pedir";
+        return;
+      }
+      const texto = seleccionados.map(i => `${i.name} (${i.precioUsd} USD)`).join(", ");
+      const url = `https://wa.me/${numeroWhatsApp}?text=Quiero%20pedir:%20${encodeURIComponent(texto)}`;
+      pedidoBtn.href = url;
+      pedidoBtn.textContent = `📲 Pedir (${seleccionados.length})`;
     }
 
     loadMenu();
