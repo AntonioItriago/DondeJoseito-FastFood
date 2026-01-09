@@ -53,6 +53,10 @@
       border-radius: 5px;
       cursor: pointer;
     }
+    .cantidad {
+      margin-top: 5px;
+      font-size: 0.9em;
+    }
     #pedido {
       display: block;
       margin: 20px auto;
@@ -63,7 +67,7 @@
       text-decoration: none;
       font-weight: bold;
       text-align: center;
-      width: 200px;
+      width: 220px;
     }
   </style>
 </head>
@@ -75,9 +79,9 @@
   <script>
     const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTbg8KB2-y4tvbCW0e7Gf5CgXINL0nYscJRYD8BSavoNc40YZp0XWMF2-L686N0VoPqNIBTECKQqPd5/pub?gid=0&single=true&output=tsv";
     const dolarApi = "https://ve.dolarapi.com/v1/dolares/oficial";
-    const numeroWhatsApp = "584141234567"; // Cambia por tu número
+    const numeroWhatsApp = "584122525407"; // número en formato internacional
 
-    let seleccionados = [];
+    let seleccionados = {};
 
     async function loadMenu() {
       try {
@@ -128,20 +132,19 @@
               <h3>${item.name}</h3>
               <p>${item.description}</p>
               <p><strong>${item.precioUsd} USD</strong> / <strong>${item.precioBs} Bs</strong></p>
-              <button class="select-btn">Seleccionar</button>
+              <button class="select-btn">➕ Agregar</button>
+              <div class="cantidad">Cantidad: 0</div>
             `;
-            div.querySelector(".select-btn").addEventListener("click", () => {
-              if(!seleccionados.includes(item)) {
-                seleccionados.push(item);
-                div.querySelector(".select-btn").textContent = "✅ Seleccionado";
-                div.querySelector(".select-btn").style.background = "#4CAF50";
-              } else {
-                seleccionados = seleccionados.filter(i => i !== item);
-                div.querySelector(".select-btn").textContent = "Seleccionar";
-                div.querySelector(".select-btn").style.background = "#ff9800";
-              }
+            const btn = div.querySelector(".select-btn");
+            const cantidadDiv = div.querySelector(".cantidad");
+
+            btn.addEventListener("click", () => {
+              if(!seleccionados[item.name]) seleccionados[item.name] = {item, cantidad:0};
+              seleccionados[item.name].cantidad++;
+              cantidadDiv.textContent = "Cantidad: " + seleccionados[item.name].cantidad;
               actualizarPedido();
             });
+
             carousel.appendChild(div);
           });
 
@@ -155,15 +158,16 @@
 
     function actualizarPedido() {
       const pedidoBtn = document.getElementById("pedido");
-      if(seleccionados.length === 0) {
+      const items = Object.values(seleccionados);
+      if(items.length === 0) {
         pedidoBtn.href = "#";
         pedidoBtn.textContent = "📲 Pedir";
         return;
       }
-      const texto = seleccionados.map(i => `${i.name} (${i.precioUsd} USD)`).join(", ");
+      const texto = items.map(i => `${i.item.name} x${i.cantidad} (${i.item.precioUsd} USD c/u)`).join(", ");
       const url = `https://wa.me/${numeroWhatsApp}?text=Quiero%20pedir:%20${encodeURIComponent(texto)}`;
       pedidoBtn.href = url;
-      pedidoBtn.textContent = `📲 Pedir (${seleccionados.length})`;
+      pedidoBtn.textContent = `📲 Pedir (${items.reduce((a,b)=>a+b.cantidad,0)})`;
     }
 
     loadMenu();
