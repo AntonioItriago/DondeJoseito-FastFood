@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>DondeJoseito FastFood</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -67,7 +68,7 @@
       text-decoration: none;
       font-weight: bold;
       text-align: center;
-      width: 220px;
+      width: 260px;
     }
   </style>
 </head>
@@ -79,15 +80,16 @@
   <script>
     const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTbg8KB2-y4tvbCW0e7Gf5CgXINL0nYscJRYD8BSavoNc40YZp0XWMF2-L686N0VoPqNIBTECKQqPd5/pub?gid=0&single=true&output=tsv";
     const dolarApi = "https://ve.dolarapi.com/v1/dolares/oficial";
-    const numeroWhatsApp = "584122525407"; // número en formato internacional
+    const numeroWhatsApp = "584128380827"; // número en formato internacional
 
     let seleccionados = {};
+    let tasa = 0;
 
     async function loadMenu() {
       try {
         const dolarRes = await fetch(dolarApi);
         const dolarData = await dolarRes.json();
-        const tasa = dolarData.promedio;
+        tasa = dolarData.promedio;
 
         const res = await fetch(sheetUrl);
         const text = await res.text();
@@ -164,8 +166,22 @@
         pedidoBtn.textContent = "📲 Pedir";
         return;
       }
-      const texto = items.map(i => `${i.item.name} x${i.cantidad} (${i.item.precioUsd} USD c/u)`).join(", ");
-      const url = `https://wa.me/${numeroWhatsApp}?text=Quiero%20pedir:%20${encodeURIComponent(texto)}`;
+
+      let totalUsd = 0;
+      let totalBs = 0;
+      let detalle = "";
+
+      items.forEach(i => {
+        const subtotalUsd = i.item.precioUsd * i.cantidad;
+        const subtotalBs = i.item.precioBs * i.cantidad;
+        totalUsd += subtotalUsd;
+        totalBs += subtotalBs;
+        detalle += `- ${i.item.name} ×${i.cantidad} → ${subtotalUsd.toFixed(2)} USD (≈ ${subtotalBs.toFixed(2)} Bs)\n`;
+      });
+
+      const mensaje = `¡Hola, Joseito! Quiero realizar un pedido:\n\n${detalle}\n*TOTAL ESTIMADO:* ${totalUsd.toFixed(2)} USD / ${totalBs.toFixed(2)} Bs\n(Tasa oficial: ${tasa} Bs/USD)\n\nPor favor, necesito confirmar el pedido, delivery y los detalles de pago. ¡Gracias!`;
+
+      const url = `https://wa.me/${numeroWhatsApp}?text=${encodeURIComponent(mensaje)}`;
       pedidoBtn.href = url;
       pedidoBtn.textContent = `📲 Pedir (${items.reduce((a,b)=>a+b.cantidad,0)})`;
     }
